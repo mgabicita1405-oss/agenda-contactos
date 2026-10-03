@@ -1,6 +1,5 @@
 package com.example.agendacontacto
 
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,21 +23,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,19 +46,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.agendacontacto.data.Contacto
 import com.example.agendacontacto.ui.theme.AgendaContactoTheme
-import com.example.agendacontacto.ui.theme.TealAcento
-import com.example.agendacontacto.ui.theme.VioletaPrimario
-import com.example.agendacontacto.ui.theme.VioletaSecundario
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,28 +59,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AgendaContactoTheme(dynamicColor = false) {
-                AgendaApp()
+                PantallaContactos()
             }
         }
-    }
-}
-
-// ===== Navegacion: bienvenida (solo primera vez) -> sistema =====
-@Composable
-fun AgendaApp() {
-    val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("agenda_prefs", Context.MODE_PRIVATE) }
-    var bienvenidaVista by remember { mutableStateOf(prefs.getBoolean("bienvenida_vista", false)) }
-
-    if (!bienvenidaVista) {
-        PantallaBienvenida(
-            onEntrar = {
-                prefs.edit().putBoolean("bienvenida_vista", true).apply()
-                bienvenidaVista = true
-            }
-        )
-    } else {
-        PantallaContactos()
     }
 }
 
@@ -101,24 +71,23 @@ fun PantallaContactos(viewModel: ContactoViewModel = viewModel(factory = Contact
     val contactos by viewModel.contactos.collectAsState()
     val busqueda by viewModel.busqueda.collectAsState()
 
+    // Estado del formulario (agregar / editar)
     var mostrarFormulario by remember { mutableStateOf(false) }
     var contactoEditando by remember { mutableStateOf<Contacto?>(null) }
+
+    // Estado del dialogo de confirmacion de eliminacion
     var contactoAEliminar by remember { mutableStateOf<Contacto?>(null) }
 
     Scaffold(
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            FloatingActionButton(
                 onClick = {
                     contactoEditando = null
                     mostrarFormulario = true
                 },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = RoundedCornerShape(18.dp)
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Agregar contacto")
-                Spacer(modifier = Modifier.size(6.dp))
-                Text("Agregar", fontWeight = FontWeight.Bold)
             }
         }
     ) { padding ->
@@ -128,117 +97,58 @@ fun PantallaContactos(viewModel: ContactoViewModel = viewModel(factory = Contact
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // ===== Encabezado con degradado =====
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color.Transparent
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.linearGradient(
-                                listOf(VioletaPrimario, VioletaSecundario, TealAcento)
-                            )
-                        )
-                        .padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 22.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Mis Contactos",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = if (contactos.isEmpty())
-                                    "Guarda y administra tus contactos"
-                                else
-                                    "${contactos.size} contacto${if (contactos.size == 1) "" else "s"} guardado${if (contactos.size == 1) "" else "s"}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.85f)
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(46.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Contacts,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                }
-            }
+            // Encabezado
+            Text(
+                text = "Mis Contactos",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp)
+            )
+            Text(
+                text = "Guarda y administra tus contactos",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp)
+            )
 
-            // ===== Buscador =====
+            // Buscador
             OutlinedTextField(
                 value = busqueda,
                 onValueChange = { viewModel.onBusquedaCambio(it) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(horizontal = 20.dp),
                 placeholder = { Text("Buscar contacto...") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                )
+                shape = RoundedCornerShape(16.dp)
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
             if (contactos.isEmpty()) {
-                // ===== Estado vacio =====
+                // Estado vacio
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(
-                            modifier = Modifier
-                                .size(88.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Contacts,
-                                contentDescription = null,
-                                modifier = Modifier.size(42.dp),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(72.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = if (busqueda.isBlank()) "No hay contactos aun" else "Sin resultados para: $busqueda",
+                            text = if (busqueda.isBlank()) "No hay contactos aún" else "Sin resultados",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
                         if (busqueda.isBlank()) {
                             Text(
-                                text = "Toca el boton + para agregar el primero",
+                                text = "Toca + para agregar el primero",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
@@ -248,8 +158,10 @@ fun PantallaContactos(viewModel: ContactoViewModel = viewModel(factory = Contact
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 100.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        start = 20.dp, end = 20.dp, bottom = 90.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(contactos, key = { it.id }) { contacto ->
                         TarjetaContacto(
@@ -266,7 +178,7 @@ fun PantallaContactos(viewModel: ContactoViewModel = viewModel(factory = Contact
         }
     }
 
-    // ===== Formulario agregar / editar =====
+    // Formulario agregar / editar
     if (mostrarFormulario) {
         FormularioContacto(
             contactoExistente = contactoEditando,
@@ -288,22 +200,19 @@ fun PantallaContactos(viewModel: ContactoViewModel = viewModel(factory = Contact
         )
     }
 
-    // ===== Confirmacion de eliminacion =====
+    // Confirmacion de eliminacion
     contactoAEliminar?.let { contacto ->
         AlertDialog(
             onDismissRequest = { contactoAEliminar = null },
-            shape = RoundedCornerShape(22.dp),
             title = { Text("Eliminar contacto") },
-            text = { Text("Deseas eliminar a ${contacto.nombre}? Esta accion no se puede deshacer.") },
+            text = { Text("¿Deseas eliminar a ${contacto.nombre}? Esta acción no se puede deshacer.") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         viewModel.eliminarContacto(contacto)
                         contactoAEliminar = null
                     }
-                ) {
-                    Text("Eliminar", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                }
+                ) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
                 TextButton(onClick = { contactoAEliminar = null }) { Text("Cancelar") }
@@ -311,21 +220,6 @@ fun PantallaContactos(viewModel: ContactoViewModel = viewModel(factory = Contact
         )
     }
 }
-
-// ===== Colores de avatar segun el contacto =====
-private data class ParColor(val inicio: Color, val fin: Color)
-
-private val coloresAvatar = listOf(
-    ParColor(Color(0xFF6C5CE7), Color(0xFF8E7CF3)),
-    ParColor(Color(0xFF0984E3), Color(0xFF74B9FF)),
-    ParColor(Color(0xFF00B8A9), Color(0xFF55EFC4)),
-    ParColor(Color(0xFFE17055), Color(0xFFFDCB6E)),
-    ParColor(Color(0xFFD63031), Color(0xFFFF7675)),
-    ParColor(Color(0xFF8E44AD), Color(0xFFC39BD3))
-)
-
-private fun colorAvatar(id: Int): ParColor =
-    coloresAvatar[id % coloresAvatar.size]
 
 @Composable
 fun TarjetaContacto(
@@ -335,43 +229,39 @@ fun TarjetaContacto(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar con degradado segun el contacto
-            val avatar = colorAvatar(contacto.id)
+            // Avatar con la inicial
             Box(
                 modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(Brush.linearGradient(listOf(avatar.inicio, avatar.fin))),
+                    .size(48.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = contacto.nombre.trim().take(1).uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
+                    text = contacto.nombre.take(1).uppercase(),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = contacto.nombre,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = contacto.telefono,
                     style = MaterialTheme.typography.bodyMedium,
@@ -414,18 +304,15 @@ fun FormularioContacto(
     var telefono by remember { mutableStateOf(contactoExistente?.telefono ?: "") }
     var email by remember { mutableStateOf(contactoExistente?.email ?: "") }
 
+    // Mensajes de error (validacion)
     var errorNombre by remember { mutableStateOf<String?>(null) }
     var errorTelefono by remember { mutableStateOf<String?>(null) }
     var errorEmail by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onCerrar,
-        shape = RoundedCornerShape(22.dp),
         title = {
-            Text(
-                if (contactoExistente == null) "Nuevo contacto" else "Editar contacto",
-                fontWeight = FontWeight.Bold
-            )
+            Text(if (contactoExistente == null) "Nuevo contacto" else "Editar contacto")
         },
         text = {
             Column {
@@ -448,7 +335,7 @@ fun FormularioContacto(
                         telefono = it
                         errorTelefono = null
                     },
-                    label = { Text("Telefono") },
+                    label = { Text("Teléfono") },
                     singleLine = true,
                     isError = errorTelefono != null,
                     supportingText = { errorTelefono?.let { Text(it) } },
@@ -473,19 +360,20 @@ fun FormularioContacto(
         },
         confirmButton = {
             TextButton(onClick = {
+                // Validaciones
                 val nombreOk = nombre.trim().length >= 2
                 val telefonoOk = telefono.trim().length >= 8 && telefono.trim().all { it.isDigit() || it == '+' || it == ' ' }
                 val emailOk = email.isBlank() || android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()
 
-                errorNombre = if (!nombreOk) "Ingresa un nombre valido (min. 2 letras)" else null
-                errorTelefono = if (!telefonoOk) "Ingresa un telefono valido (min. 8 digitos)" else null
-                errorEmail = if (!emailOk) "Ingresa un correo valido" else null
+                errorNombre = if (!nombreOk) "Ingresa un nombre válido (mín. 2 letras)" else null
+                errorTelefono = if (!telefonoOk) "Ingresa un teléfono válido (mín. 8 dígitos)" else null
+                errorEmail = if (!emailOk) "Ingresa un correo válido" else null
 
                 if (nombreOk && telefonoOk && emailOk) {
                     onGuardar(nombre.trim(), telefono.trim(), email.trim())
                 }
             }) {
-                Text("Guardar", fontWeight = FontWeight.Bold)
+                Text("Guardar")
             }
         },
         dismissButton = {
